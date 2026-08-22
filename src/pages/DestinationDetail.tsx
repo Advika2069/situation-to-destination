@@ -4,6 +4,7 @@ import {
   Star,
   MapPin,
   Calendar,
+  CalendarDays,
   Wallet,
   Cloud,
   Thermometer,
@@ -24,7 +25,7 @@ import {
   Info,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
-import { destinations, hyderabadPlaces, hyderabadWeather, guides, emergencyServices } from '@/data/mock';
+import { destinations, hyderabadPlaces, hyderabadWeather, guides, emergencyServices, culturalEvents } from '@/data/mock';
 import { cn } from '@/lib/utils';
 
 export default function DestinationDetail() {
@@ -36,6 +37,7 @@ export default function DestinationDetail() {
   const attractions = places.filter((p) => p.type === 'attraction');
   const restaurants = places.filter((p) => p.type === 'restaurant');
   const shops = places.filter((p) => p.type === 'shop');
+  const destinationEvents = culturalEvents.filter((e) => e.destination === destination.name);
 
   return (
     <AppShell>
@@ -150,6 +152,56 @@ export default function DestinationDetail() {
             ))}
           </div>
         </motion.div>
+
+        {/* Cultural Events */}
+        {destinationEvents.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.22 }}
+            className="mb-8"
+          >
+            <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" /> Cultural Events
+            </h2>
+            <div className="space-y-3">
+              {destinationEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="rounded-xl border border-border bg-card p-4 hover:border-foreground/20 transition-all"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-14 w-14 rounded-lg overflow-hidden shrink-0">
+                      <img
+                        src={event.image}
+                        alt={event.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-semibold text-foreground truncate">{event.name}</h4>
+                        <span className="text-[10px] bg-primary/10 text-foreground px-1.5 py-0.5 rounded font-medium capitalize shrink-0">{event.type}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{event.description}</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Calendar className="h-3 w-3" /> {event.dateRange}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{event.ticketPrice}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {event.tags.map((tag) => (
+                          <span key={tag} className="text-[10px] bg-foreground/5 text-muted-foreground px-2 py-0.5 rounded-full">{tag}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Attractions */}
         <motion.div

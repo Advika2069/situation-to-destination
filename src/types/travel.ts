@@ -263,3 +263,17 @@ export interface TravelDNA {
   shopping: number;
   relaxation: number;
 }
+
+export interface CulturalEvent {
+  id: string;
+  name: string;
+  destination: string;
+  description: string;
+  dateRange: string;
+  venue: string;
+  type: 'festival' | 'concert' | 'exhibition' | 'fair' | 'ceremony' | 'performance';
+  image: string;
+  coordinates: GeoPoint;
+  ticketPrice: string;
+  tags: string[];
+}

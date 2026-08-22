@@ -49,21 +49,21 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          'hidden lg:flex flex-col border-r border-border bg-card transition-all duration-300',
+          'hidden lg:flex flex-col border-r border-[#1e3a5f]/10 bg-[#0f2540] transition-all duration-300',
           sidebarOpen ? 'w-56' : 'w-16'
         )}
       >
         {/* Logo */}
-        <div className={cn('flex items-center border-b border-border h-14', sidebarOpen ? 'px-4' : 'px-3 justify-center')}>
+        <div className={cn('flex items-center border-b border-[#1e3a5f]/20 h-14', sidebarOpen ? 'px-4' : 'px-3 justify-center')}>
           {sidebarOpen ? (
             <NavLink to="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background text-xs font-bold">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#c8a348] text-[#0f2540] text-xs font-bold">
                 T
               </div>
-              <span className="text-sm font-semibold tracking-tight">TravelOS</span>
+              <span className="text-sm font-semibold tracking-tight text-white">TravelOS</span>
             </NavLink>
           ) : (
-            <NavLink to="/" className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background text-xs font-bold">
+            <NavLink to="/" className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#c8a348] text-[#0f2540] text-xs font-bold">
               T
             </NavLink>
           )}
@@ -82,8 +82,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
                     active
-                      ? 'bg-foreground/5 text-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5',
+                      ? 'bg-[#c8a348]/10 text-[#c8a348]'
+                      : 'text-white/50 hover:text-white hover:bg-white/5',
                     !sidebarOpen && 'justify-center px-0'
                   )}
                 >
@@ -96,11 +96,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         {/* Bottom controls */}
-        <div className="border-t border-border p-3 space-y-2">
+        <div className="border-t border-[#1e3a5f]/20 p-3 space-y-2">
           <button
             onClick={() => setDarkMode(!darkMode)}
             className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all w-full',
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/50 hover:text-white hover:bg-white/5 transition-all w-full',
               !sidebarOpen && 'justify-center px-0'
             )}
           >
@@ -110,7 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all w-full',
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/50 hover:text-white hover:bg-white/5 transition-all w-full',
               !sidebarOpen && 'justify-center px-0'
             )}
           >
@@ -128,12 +128,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Mobile top bar */}
       <div className="flex-1 flex flex-col">
-        <header className="lg:hidden flex items-center justify-between border-b border-border bg-card h-14 px-4 sticky top-0 z-40">
+        <header className="lg:hidden flex items-center justify-between border-b border-border bg-[#0f2540] h-14 px-4 sticky top-0 z-40">
           <NavLink to="/" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-foreground text-background text-[10px] font-bold">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#c8a348] text-[#0f2540] text-[10px] font-bold">
               T
             </div>
-            <span className="text-sm font-semibold">TravelOS</span>
+            <span className="text-sm font-semibold text-white">TravelOS</span>
           </NavLink>
           <div className="flex items-center gap-2">
             <button
@@ -162,7 +162,7 @@ function MobileBottomNav() {
   const mobileItems = navItems.slice(0, 5); // First 5 items for mobile
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-card/80 backdrop-blur-xl z-50">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 border-t border-[#1e3a5f]/10 bg-[#0f2540]/95 backdrop-blur-xl z-50">
       <div className="flex items-center justify-around h-14">
         {mobileItems.map((item) => {
           const Icon = item.icon;
@@ -173,7 +173,7 @@ function MobileBottomNav() {
               to={item.to}
               className={cn(
                 'flex flex-col items-center gap-0.5 py-1 px-2 text-[10px] font-medium transition-all',
-                active ? 'text-foreground' : 'text-muted-foreground'
+                active ? 'text-[#c8a348]' : 'text-white/40'
               )}
             >
               <Icon className="h-4 w-4" />

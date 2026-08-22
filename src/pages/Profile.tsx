@@ -1,17 +1,57 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Star, Settings, LogOut } from 'lucide-react';
+import { User, Save, Phone, Mail, Loader2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/hooks/use-auth';
 import { useAppStore } from '@/store/app-store';
-import { travelDNA, demoUser } from '@/data/mock';
+import { demoUser } from '@/data/mock';
 
 export default function Profile() {
   const { user, signOut } = useAuth();
+  const updateProfile = useMutation(api.users.updateProfile);
   const navigate = useNavigate();
   const { travelDNA: dna } = useAppStore();
 
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFirstName((user as Record<string, unknown>).firstName as string || '');
+      setLastName((user as Record<string, unknown>).lastName as string || '');
+      setPhone((user as Record<string, unknown>).phone as string || '');
+      setEmail((user as Record<string, unknown>).email as string || '');
+    }
+  }, [user]);
+
   const dnaEntries = Object.entries(dna).sort(([, a], [, b]) => b - a);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const fullName = `${firstName} ${lastName}`.trim();
+      await updateProfile({
+        firstName,
+        lastName,
+        phone,
+        name: fullName || undefined,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      console.error('Profile save error:', e);
+    }
+    setIsSaving(false);
+  };
+
+  const displayName = firstName || (user as Record<string, unknown>)?.name as string || demoUser.name;
 
   return (
     <AppShell>
@@ -22,43 +62,97 @@ export default function Profile() {
             <User className="h-3.5 w-3.5" />
             <span className="font-medium uppercase tracking-wider">Profile</span>
           </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            {user?.name || demoUser.name}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">{demoUser.type} • {demoUser.budget} Budget</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">My Profile</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage your personal details and travel preferences.</p>
         </motion.div>
 
-        {/* User card */}
+        {/* User Details Form */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="rounded-xl border border-border bg-card p-6 mb-8"
         >
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center gap-4 mb-6">
             <div className="h-16 w-16 rounded-full bg-foreground/10 flex items-center justify-center text-xl font-bold text-foreground">
-              {(user?.name || demoUser.name).charAt(0)}
+              {firstName ? firstName.charAt(0) : displayName.charAt(0)}
             </div>
             <div>
-              <h3 className="text-base font-semibold text-foreground">{user?.name || demoUser.name}</h3>
-              <p className="text-xs text-muted-foreground">{demoUser.type}</p>
-              <div className="flex gap-1.5 mt-1">
-                {demoUser.interests.map((i) => (
-                  <span key={i} className="text-[10px] bg-foreground/5 text-muted-foreground px-2 py-0.5 rounded-full">{i}</span>
-                ))}
-              </div>
+              <h3 className="text-base font-semibold text-foreground">
+                {firstName ? `${firstName} ${lastName}` : displayName}
+              </h3>
+              <p className="text-xs text-muted-foreground">{demoUser.type} • {demoUser.budget} Budget</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-card transition-all">
-              <Settings className="h-3 w-3" /> Edit Profile
-            </button>
-            <button
-              onClick={async () => { await signOut(); navigate('/'); }}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card transition-all"
-            >
-              <LogOut className="h-3 w-3" /> Sign Out
-            </button>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-foreground mb-1.5 block">First Name</label>
+                <input
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Enter first name"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/10"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground mb-1.5 block">Last Name</label>
+                <input
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Enter last name"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/10"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-foreground mb-1.5 block">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <input
+                  value={email}
+                  readOnly
+                  placeholder="Email address"
+                  className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-3 py-2.5 text-sm text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-foreground mb-1.5 block">Phone Number</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/10"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex items-center gap-1.5 rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium hover:bg-foreground/90 transition-all disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : saved ? (
+                  <Check className="h-3 w-3" />
+                ) : (
+                  <Save className="h-3 w-3" />
+                )}
+                {saved ? 'Saved!' : 'Save Changes'}
+              </button>
+              <button
+                onClick={async () => { await signOut(); navigate('/'); }}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card transition-all"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         </motion.div>
 
@@ -69,7 +163,7 @@ export default function Profile() {
           transition={{ delay: 0.2 }}
           className="rounded-xl border border-border bg-card p-6"
         >
-          <h3 className="text-sm font-semibold text-foreground mb-4">Travel DNA</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-1">Travel DNA</h3>
           <p className="text-xs text-muted-foreground mb-6">
             Your travel personality, based on trips and preferences.
           </p>

@@ -57,7 +57,7 @@ export default function Landing() {
           </nav>
           <a
             href="/auth"
-            className="flex items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-xs font-medium text-background hover:bg-foreground/90 transition-all"
+            className="flex items-center gap-2 rounded-lg bg-[#1e3a5f] px-4 py-2 text-xs font-medium text-white hover:bg-[#1e3a5f]/90 transition-all"
           >
             Get Started
             <ArrowRight className="h-3 w-3" />
@@ -72,23 +72,22 @@ export default function Landing() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: 'easeOut' }}
           className="text-center"
-        >
-          <motion.div
+        >            <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-medium text-muted-foreground mb-8"
+            className="inline-flex items-center gap-2 rounded-full border border-[#c8a348]/20 bg-[#c8a348]/5 px-4 py-1.5 text-xs font-medium text-[#1e3a5f] mb-8"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#c8a348] animate-pulse" />
             AI-Powered Travel Operating System
           </motion.div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground leading-[1.1] mb-6">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-[#1e3a5f] leading-[1.1] mb-6">
             YOUR TRIP.
             <br />
             YOUR SITUATION.
             <br />
-            <span className="text-muted-foreground">
+            <span className="gold-text">
               ONE INTELLIGENT TRAVEL OS.
             </span>
           </h1>
@@ -102,14 +101,14 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16">
             <a
               href="#demo"
-              className="flex items-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-medium text-background hover:bg-foreground/90 transition-all"
+              className="flex items-center gap-2 rounded-lg bg-[#c8a348] px-6 py-3 text-sm font-medium text-[#1e3a5f] hover:bg-[#c8a348]/90 transition-all shadow-lg shadow-[#c8a348]/20"
             >
               <Sparkles className="h-4 w-4" />
               Try the Live Demo
             </a>
             <a
               href="#features"
-              className="flex items-center gap-2 rounded-lg border border-border px-6 py-3 text-sm font-medium text-foreground hover:bg-card transition-all"
+              className="flex items-center gap-2 rounded-lg border border-[#1e3a5f]/20 px-6 py-3 text-sm font-medium text-[#1e3a5f] hover:bg-[#1e3a5f]/5 transition-all"
             >
               Explore Features
               <ChevronRight className="h-4 w-4" />
@@ -157,9 +156,7 @@ export default function Landing() {
           <p className="text-sm text-muted-foreground">
             Tell TravelOS what you need — and watch it build your perfect journey.
           </p>
-        </motion.div>
-
-        <div className="rounded-2xl border border-border bg-card p-6 sm:p-10">
+        </motion.div>          <div className="rounded-2xl border border-[#1e3a5f]/10 bg-card p-6 sm:p-10 shadow-xl shadow-[#1e3a5f]/5">
           <AnimatePresence mode="wait">
             {phase === 'input' && (
               <motion.div
@@ -217,7 +214,7 @@ export default function Landing() {
                     </a>
                     <button
                       onClick={() => { setPhase('input'); setItinerary(null); }}
-                      className="flex items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-xs font-medium text-background hover:bg-foreground/90 transition-all"
+                      className="flex items-center gap-2 rounded-lg bg-[#c8a348] px-4 py-2 text-xs font-medium text-[#1e3a5f] hover:bg-[#c8a348]/90 transition-all"
                     >
                       <Play className="h-3 w-3" fill="currentColor" />
                       Try Another Scenario
@@ -287,7 +284,7 @@ export default function Landing() {
               transition={{ delay: i * 0.1 }}
               className="rounded-xl border border-border bg-card p-6 hover:border-foreground/20 transition-all"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-foreground/5 text-foreground mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1e3a5f]/5 text-[#1e3a5f] mb-4">
                 {feature.icon}
               </div>
               <h3 className="text-sm font-semibold text-foreground mb-2">{feature.title}</h3>
@@ -303,17 +300,17 @@ export default function Landing() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center rounded-2xl border border-border bg-card p-10 sm:p-16"
+          className="text-center rounded-2xl border border-[#c8a348]/20 bg-gradient-to-b from-[#1e3a5f] to-[#0f2540] p-10 sm:p-16"
         >
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight mb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight mb-3">
             YOUR JOURNEY IS MORE THAN A DESTINATION.
           </h2>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto mb-8">
+          <p className="text-sm text-white/70 max-w-md mx-auto mb-8">
             TravelOS turns your situation into an intelligent travel experience. Built for families, optimized for every moment.
           </p>
           <a
             href="/auth"
-            className="inline-flex items-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-medium text-background hover:bg-foreground/90 transition-all"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#c8a348] px-6 py-3 text-sm font-medium text-[#1e3a5f] hover:bg-[#c8a348]/90 transition-all shadow-lg shadow-[#c8a348]/30"
           >
             Start Your Journey
             <ArrowRight className="h-4 w-4" />
