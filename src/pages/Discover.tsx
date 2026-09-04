@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import {
@@ -15,10 +15,13 @@ import {
   Camera,
   Mountain,
   TreePine,
+  Loader2,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AppShell } from '@/components/layout/AppShell';
-import { destinations } from '@/data/mock';
+import { destinations as fallbackDestinations } from '@/data/mock';
+import { useDestinationSearch } from '@/hooks/use-places';
 
 const categories = [
   { id: 'all', label: 'All' },
@@ -44,12 +47,33 @@ const catIcons: Record<string, React.ReactNode> = {
 export default function Discover() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [search, setSearch] = useState('');
+  const { results: apiResults, loading: apiLoading, search: searchDestinations } = useDestinationSearch();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const filtered = destinations.filter((d) => {
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (value.length >= 2) {
+        searchDestinations(value);
+      }
+    }, 800);
+  }, [searchDestinations]);
+
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  }, []);
+
+  // Merge API results with fallback destinations
+  const allDestinations = apiResults.length > 0
+    ? [...apiResults, ...fallbackDestinations.filter((fd) => !apiResults.some((ar) => ar.name === fd.name))]
+    : fallbackDestinations;
+
+  const filtered = allDestinations.filter((d) => {
     const matchesCategory =
       activeCategory === 'all' || d.categories.includes(activeCategory);
     const matchesSearch =
-      !search || d.name.toLowerCase().includes(search.toLowerCase());
+      !search || d.name.toLowerCase().includes(search.toLowerCase()) || d.state.toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -85,10 +109,13 @@ export default function Discover() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search destinations..."
-              className="w-full rounded-xl border border-border bg-card pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/10"
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Search any city or destination worldwide..."
+              className="w-full rounded-xl border border-border bg-card pl-10 pr-10 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/10"
             />
+            {apiLoading && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+            )}
           </div>
         </motion.div>
 
@@ -181,9 +208,11 @@ export default function Discover() {
           ))}
         </div>
 
-        {filtered.length === 0 && (
+        {filtered.length === 0 && !apiLoading && (
           <div className="text-center py-16">
+            <Globe className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">No destinations found. Try a different search or category.</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Search for any city worldwide — results come from OpenStreetMap.</p>
           </div>
         )}
       </div>

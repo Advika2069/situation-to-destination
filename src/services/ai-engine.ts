@@ -8,6 +8,17 @@ import type {
 } from '@/types/travel';
 import { hyderabadPlaces, hyderabadWeather } from '@/data/mock';
 
+// Allow external places to be passed in; fall back to mock
+let externalPlaces: Place[] | null = null;
+
+export function setPlacesForEngine(places: Place[]) {
+  externalPlaces = places;
+}
+
+export function clearPlacesForEngine() {
+  externalPlaces = null;
+}
+
 // ── Priority Score Calculator ─────────────────────────────
 export function calculatePriorityScore(
   place: Place,
@@ -99,7 +110,7 @@ export function generateItinerary(
   return {
     id: `itin-${Date.now()}`,
     title: `${situation.hoursAvailable}-Hour ${situation.destination || situation.currentLocation} Journey`,
-    destination: situation.destination || situation.currentLocation,
+    destination: situation.destination || situation.currentLocation || 'Current Location',
     date: situation.date,
     activities,
     totalDuration: formatDuration(usedMinutes),
@@ -193,20 +204,21 @@ function calculateFitScore(
 
 // ── Place Filter ──────────────────────────────────────────
 function getRelevantPlaces(situation: TravelSituation): Place[] {
-  // Use Hyderabad data as demo
-  let places = [...hyderabadPlaces];
+  // Use API-provided places if available, otherwise fallback to mock
+  let places = externalPlaces && externalPlaces.length > 0
+    ? [...externalPlaces]
+    : [...hyderabadPlaces];
 
   // Filter by vegetarian preference
   if (situation.foodPreference === 'vegetarian') {
-    // Keep non-food places + vegetarian food places
     places = places.filter(
-      (p) => p.type !== 'restaurant' || p.isVegetarian
+      (p) => p.type !== 'restaurant' || p.isVegetarian === true
     );
   }
 
   if (situation.foodPreference === 'vegan') {
     places = places.filter(
-      (p) => p.type !== 'restaurant' || p.isVegan
+      (p) => p.type !== 'restaurant' || p.isVegan === true
     );
   }
 

@@ -11,11 +11,14 @@ import {
   Star,
   ChevronRight,
   ExternalLink,
+  Check,
+  Copy,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '@/lib/utils';
 import { AppShell } from '@/components/layout/AppShell';
 import { localOffers } from '@/data/mock';
+import { useAppStore } from '@/store/app-store';
 
 const dashboardStats = [
   { label: 'Impressions', value: '2,340', change: '+12%', icon: <Eye className="h-4 w-4" /> },
@@ -35,6 +38,14 @@ const campaignData = [
 
 export default function Business() {
   const [activeTab, setActiveTab] = useState<'offers' | 'dashboard'>('offers');
+  const { claimedOffers, claimOffer } = useAppStore();
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
 
   return (
     <AppShell>
@@ -107,9 +118,25 @@ export default function Business() {
                         </span>
                         <span className="text-[10px] text-muted-foreground">{offer.claimed} claimed</span>
                       </div>
-                      <button className="text-[10px] font-medium text-foreground flex items-center gap-1 hover:underline">
-                        Claim <ChevronRight className="h-3 w-3" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleCopyCode(offer.code)}
+                          className="text-[10px] font-medium text-muted-foreground flex items-center gap-1 hover:text-foreground transition-colors"
+                        >
+                          {copiedCode === offer.code ? <><Check className="h-3 w-3" /> Copied!</> : <><Copy className="h-3 w-3" /> Copy Code</>}
+                        </button>
+                        <button
+                          onClick={() => claimOffer(offer.id)}
+                          className={cn(
+                            'flex items-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-medium transition-all',
+                            claimedOffers.includes(offer.id)
+                              ? 'bg-foreground text-background'
+                              : 'bg-foreground text-background hover:bg-foreground/90'
+                          )}
+                        >
+                          {claimedOffers.includes(offer.id) ? <><Check className="h-3 w-3" /> Claimed</> : <><Ticket className="h-3 w-3" /> Claim Offer</>}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

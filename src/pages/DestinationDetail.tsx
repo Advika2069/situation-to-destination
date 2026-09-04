@@ -1,3 +1,4 @@
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router';
 import { motion } from 'framer-motion';
 import {
@@ -23,21 +24,101 @@ import {
   Clock,
   Train,
   Info,
+  Loader2,
+  Phone,
+  BookmarkCheck,
+  Bookmark,
+  ExternalLink,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
-import { destinations, hyderabadPlaces, hyderabadWeather, guides, emergencyServices, culturalEvents } from '@/data/mock';
+import { destinations as fallbackDestinations, hyderabadPlaces, hyderabadWeather, guides as fallbackGuides, culturalEvents as fallbackEvents } from '@/data/mock';
 import { cn } from '@/lib/utils';
+import { useNearbyPlaces, useWeather, useEmergencyServices, useGeocode } from '@/hooks/use-places';
+import { getTransportOptions } from '@/services/places-api';
+import { useAppStore } from '@/store/app-store';
+import type { Place, WeatherData, EmergencyService } from '@/types/travel';
 
 export default function DestinationDetail() {
   const { slug } = useParams<{ slug: string }>();
-  const destination = destinations.find((d) => d.slug === slug) || destinations[0];
-  const places = destination.slug === 'hyderabad' ? hyderabadPlaces : hyderabadPlaces.slice(0, 6);
-  const weather = destination.slug === 'hyderabad' ? hyderabadWeather : hyderabadWeather;
+  const { addToPlan, addedToPlan, savedPlaces, addSavedPlace, removeSavedPlace } = useAppStore();
+  const destination = fallbackDestinations.find((d) => d.slug === slug) || fallbackDestinations[0];
 
-  const attractions = places.filter((p) => p.type === 'attraction');
-  const restaurants = places.filter((p) => p.type === 'restaurant');
-  const shops = places.filter((p) => p.type === 'shop');
-  const destinationEvents = culturalEvents.filter((e) => e.destination === destination.name);
+  const { places: apiPlaces, loading: placesLoading, fetchPlaces } = useNearbyPlaces();
+  const { weather: apiWeather, fetchWeather } = useWeather();
+  const { services: apiEmergency, loading: emergencyLoading, fetchServices } = useEmergencyServices();
+  const { resolve: geocodeLocation } = useGeocode();
+
+  const [attractions, setAttractions] = useState<Place[]>([]);
+  const [restaurants, setRestaurants] = useState<Place[]>([]);
+  const [shops, setShops] = useState<Place[]>([]);
+  const [weather, setWeather] = useState<WeatherData>(hyderabadWeather);
+  const [emergencyServicesList, setEmergencyServicesList] = useState<EmergencyService[]>([]);
+  const [transportOptions, setTransportOptions] = useState<{type: string; provider: string; price: number; duration: string; distance: string; label: string}[]>([]);
+
+  const isSaved = useCallback((id: string) => savedPlaces.some((p) => p.id === id), [savedPlaces]);
+
+  // Derive places from API data
+  useEffect(() => {
+    const allPlaces = apiPlaces;
+    if (allPlaces.length > 0) {
+      setAttractions(allPlaces.filter((p) => p.type === 'attraction'));
+      setRestaurants(allPlaces.filter((p) => p.type === 'restaurant'));
+      setShops(allPlaces.filter((p) => p.type === 'shop'));
+    } else if (!placesLoading) {
+      // Fallback to mock data
+      setAttractions(hyderabadPlaces.filter((p) => p.type === 'attraction'));
+      setRestaurants(hyderabadPlaces.filter((p) => p.type === 'restaurant'));
+      setShops(hyderabadPlaces.filter((p) => p.type === 'shop'));
+    }
+  }, [apiPlaces, placesLoading]);
+
+  // Derive weather from API data
+  useEffect(() => {
+    if (apiWeather) setWeather(apiWeather);
+  }, [apiWeather]);
+
+  // Derive emergency services from API data
+  useEffect(() => {
+    if (apiEmergency.length > 0) setEmergencyServicesList(apiEmergency);
+    else if (!emergencyLoading) setEmergencyServicesList([]);
+  }, [apiEmergency, emergencyLoading]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      // Try to geocode the destination
+      const coords = await geocodeLocation(destination.name);
+      if (cancelled) return;
+
+      const center = coords || destination.coordinates;
+
+      // Fetch places, weather, and emergency services in parallel
+      await Promise.all([
+        fetchPlaces(center, 8000),
+        fetchWeather(center),
+        fetchServices(center),
+      ]);
+
+      if (cancelled) return;
+
+      // Place data will be updated via apiPlaces state
+      // Weather data will be updated via apiWeather state
+      // Emergency data will be updated via apiEmergency state
+
+      // apiPlaces will be updated by the hook, use it via state
+
+      // Weather and emergency services will be picked up by the useEffect hooks above
+
+      // Generate transport options
+      const distance = 8 + Math.random() * 5;
+      const transport = await getTransportOptions(center, center, distance);
+      setTransportOptions(transport);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [destination]);
+
+  const destinationEvents = fallbackEvents.filter((e) => e.destination === destination.name);
 
   return (
     <AppShell>
@@ -165,7 +246,7 @@ export default function DestinationDetail() {
               <CalendarDays className="h-4 w-4" /> Cultural Events
             </h2>
             <div className="space-y-3">
-              {destinationEvents.map((event) => (
+              {destinationEvents.map((event: typeof fallbackEvents[0]) => (
                 <div
                   key={event.id}
                   className="rounded-xl border border-border bg-card p-4 hover:border-foreground/20 transition-all"
@@ -191,7 +272,7 @@ export default function DestinationDetail() {
                         <span className="text-[10px] text-muted-foreground">{event.ticketPrice}</span>
                       </div>
                       <div className="flex flex-wrap gap-1 mt-2">
-                        {event.tags.map((tag) => (
+                        {event.tags.map((tag: string) => (
                           <span key={tag} className="text-[10px] bg-foreground/5 text-muted-foreground px-2 py-0.5 rounded-full">{tag}</span>
                         ))}
                       </div>
@@ -215,8 +296,11 @@ export default function DestinationDetail() {
           </h2>
           <div className="space-y-3">
             {attractions.map((place) => (
-              <PlaceCard key={place.id} place={place} />
+              <PlaceCard key={place.id} place={place} onAddToPlan={() => addToPlan(place.id)} onToggleSave={() => isSaved(place.id) ? removeSavedPlace(place.id) : addSavedPlace(place)} isInPlan={addedToPlan.includes(place.id)} isSaved={isSaved(place.id)} />
             ))}
+            {attractions.length === 0 && !placesLoading && (
+              <p className="text-xs text-muted-foreground text-center py-4">No attractions found nearby.</p>
+            )}
           </div>
         </motion.div>
 
@@ -232,8 +316,11 @@ export default function DestinationDetail() {
           </h2>
           <div className="space-y-3">
             {restaurants.map((place) => (
-              <PlaceCard key={place.id} place={place} />
+              <PlaceCard key={place.id} place={place} onAddToPlan={() => addToPlan(place.id)} onToggleSave={() => isSaved(place.id) ? removeSavedPlace(place.id) : addSavedPlace(place)} isInPlan={addedToPlan.includes(place.id)} isSaved={isSaved(place.id)} />
             ))}
+            {restaurants.length === 0 && !placesLoading && (
+              <p className="text-xs text-muted-foreground text-center py-4">No restaurants found nearby.</p>
+            )}
           </div>
         </motion.div>
 
@@ -248,7 +335,7 @@ export default function DestinationDetail() {
             <Navigation className="h-4 w-4" /> Guides & Drivers
           </h2>
           <div className="space-y-3">
-            {guides.map((guide) => (
+            {fallbackGuides.map((guide) => (
               <div
                 key={guide.id}
                 className="rounded-xl border border-border bg-card p-4"
@@ -299,7 +386,7 @@ export default function DestinationDetail() {
             <Shield className="h-4 w-4" /> Safety & Emergency
           </h2>
           <div className="space-y-2">
-            {emergencyServices.map((svc) => (
+            {emergencyServicesList.map((svc) => (
               <div
                 key={svc.id}
                 className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3"
@@ -313,12 +400,33 @@ export default function DestinationDetail() {
                     <p className="text-[10px] text-muted-foreground">{svc.address}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-medium text-foreground">{svc.distance} km</p>
-                  <p className="text-[10px] text-muted-foreground">{svc.travelTime}</p>
+                <div className="flex items-center gap-2">
+                  <div className="text-right mr-2">
+                    <p className="text-[10px] font-medium text-foreground">{svc.distance} km</p>
+                    <p className="text-[10px] text-muted-foreground">{svc.travelTime}</p>
+                  </div>
+                  {svc.phone && (
+                    <a href={`tel:${svc.phone}`} className="flex items-center gap-1 rounded-lg bg-foreground text-background px-3 py-1.5 text-[10px] font-medium hover:bg-foreground/90 transition-all">
+                      <Phone className="h-3 w-3" /> Call
+                    </a>
+                  )}
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${svc.coordinates.lat},${svc.coordinates.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-[10px] font-medium text-foreground hover:bg-card transition-all"
+                  >
+                    <Navigation className="h-3 w-3" /> Navigate
+                  </a>
                 </div>
               </div>
             ))}
+            {emergencyServicesList.length === 0 && placesLoading && (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+                <span className="text-xs text-muted-foreground ml-2">Loading emergency services...</span>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>
@@ -344,7 +452,7 @@ function InfoCard({
   );
 }
 
-function PlaceCard({ place }: { place: typeof hyderabadPlaces[0] }) {
+function PlaceCard({ place, onAddToPlan, onToggleSave, isInPlan, isSaved }: { place: Place; onAddToPlan: () => void; onToggleSave: () => void; isInPlan: boolean; isSaved: boolean }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4 hover:border-foreground/20 transition-all">
       <div className="flex items-start gap-3">
@@ -371,6 +479,39 @@ function PlaceCard({ place }: { place: typeof hyderabadPlaces[0] }) {
               <span className="text-[10px] font-medium text-foreground">Free</span>
             )}
             <span className="text-[10px] text-muted-foreground">{place.openHours}</span>
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={onAddToPlan}
+              className={cn(
+                'flex items-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-medium transition-all',
+                isInPlan
+                  ? 'bg-foreground text-background'
+                  : 'border border-border text-foreground hover:bg-card'
+              )}
+            >
+              {isInPlan ? <BookmarkCheck className="h-3 w-3" /> : <Bookmark className="h-3 w-3" />}
+              {isInPlan ? 'In Plan' : 'Add to Plan'}
+            </button>
+            <button
+              onClick={onToggleSave}
+              className={cn(
+                'flex items-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-medium transition-all',
+                isSaved
+                  ? 'bg-foreground text-background'
+                  : 'border border-border text-foreground hover:bg-card'
+              )}
+            >
+              {isSaved ? '★ Saved' : '☆ Save'}
+            </button>
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${place.coordinates.lat},${place.coordinates.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-[10px] font-medium text-foreground hover:bg-card transition-all"
+            >
+              <ExternalLink className="h-3 w-3" /> Navigate
+            </a>
           </div>
         </div>
       </div>

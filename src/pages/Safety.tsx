@@ -68,9 +68,14 @@ export default function Safety() {
                   >
                     <Phone className="h-3 w-3" /> Call
                   </a>
-                  <button className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-[10px] font-medium text-foreground hover:bg-card transition-all">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${svc.coordinates.lat},${svc.coordinates.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-[10px] font-medium text-foreground hover:bg-card transition-all"
+                  >
                     <Navigation className="h-3 w-3" /> Navigate
-                  </button>
+                  </a>
                 </div>
               </motion.div>
             ))}

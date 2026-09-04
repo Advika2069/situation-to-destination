@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Route,
   Clock,
@@ -16,13 +16,14 @@ import {
   ChevronRight,
   RefreshCw,
   ArrowUpDown,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAppStore } from '@/store/app-store';
 import { generateItinerary } from '@/services/ai-engine';
 import { hyderabadPlaces } from '@/data/mock';
-import type { ItineraryActivity } from '@/types/travel';
+import type { ItineraryActivity, Place } from '@/types/travel';
 
 const optimizationModes = [
   { id: 'balanced', label: 'Balanced', icon: <Star className="h-3 w-3" /> },
@@ -34,9 +35,38 @@ const optimizationModes = [
 ];
 
 export default function Plan() {
-  const { situation, itinerary, setItinerary } = useAppStore();
+  const { situation, itinerary, setItinerary, apiPlaces } = useAppStore();
   const [mode, setMode] = useState('balanced');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [showAddPicker, setShowAddPicker] = useState(false);
+
+  const availablePlaces = apiPlaces.length > 0 ? apiPlaces : hyderabadPlaces;
+
+  const handleAddActivity = (place: Place) => {
+    const baseItinerary = itinerary || generateItinerary({
+      ...situation,
+      destination: situation.destination || 'Hyderabad',
+      currentLocation: situation.currentLocation || 'Hyderabad',
+    });
+
+    const newActivity: ItineraryActivity = {
+      id: `act-${Date.now()}`,
+      placeId: place.id,
+      place,
+      startTime: '12:00',
+      endTime: '13:00',
+      duration: 60,
+      notes: 'Added manually',
+      cost: place.price,
+      priority: 50,
+    };
+
+    setItinerary({
+      ...baseItinerary,
+      activities: [...baseItinerary.activities, newActivity],
+    });
+    setShowAddPicker(false);
+  };
 
   const activeItinerary =
     itinerary ||
@@ -152,10 +182,52 @@ export default function Plan() {
           transition={{ delay: 0.2 }}
           className="mb-6"
         >
-          <button className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card px-4 py-3 text-xs font-medium text-muted-foreground hover:border-foreground/30 hover:text-foreground transition-all">
+          <button
+            onClick={() => setShowAddPicker(!showAddPicker)}
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card px-4 py-3 text-xs font-medium text-muted-foreground hover:border-foreground/30 hover:text-foreground transition-all"
+          >
             <Plus className="h-3.5 w-3.5" />
             Add Activity
           </button>
+
+          {/* Place picker */}
+          <AnimatePresence>
+            {showAddPicker && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-3 overflow-hidden"
+              >
+                <div className="rounded-xl border border-border bg-card p-3 max-h-60 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-foreground">Select a place to add</p>
+                    <button onClick={() => setShowAddPicker(false)} className="p-1 text-muted-foreground hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {availablePlaces.slice(0, 10).map((place) => (
+                      <button
+                        key={place.id}
+                        onClick={() => handleAddActivity(place)}
+                        className="w-full flex items-center gap-3 rounded-lg border border-border bg-background p-2.5 text-left hover:border-foreground/30 transition-all"
+                      >
+                        <div className="h-8 w-8 rounded overflow-hidden shrink-0">
+                          <img src={place.image} alt={place.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-foreground truncate">{place.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{place.type} • {place.price > 0 ? `₹${place.price}` : 'Free'}</p>
+                        </div>
+                        <Plus className="h-3 w-3 text-muted-foreground shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Activity list */}

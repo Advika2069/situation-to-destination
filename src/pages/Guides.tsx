@@ -1,9 +1,12 @@
 import { motion } from 'framer-motion';
-import { Users, Star, MapPin, Globe, CheckCircle } from 'lucide-react';
+import { Users, Star, MapPin, Globe, CheckCircle, Phone, MessageCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { AppShell } from '@/components/layout/AppShell';
 import { guides } from '@/data/mock';
+import { useAppStore } from '@/store/app-store';
 
 export default function Guides() {
+  const { bookedGuides, bookGuide } = useAppStore();
   return (
     <AppShell>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 pb-24 lg:pb-6">
@@ -61,8 +64,16 @@ export default function Guides() {
                       <span className="text-lg font-bold text-foreground">₹{guide.pricePerHour}</span>
                       <span className="text-[10px] text-muted-foreground ml-1">per hour</span>
                     </div>
-                    <button className="rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium hover:bg-foreground/90 transition-all">
-                      Book Now
+                    <button
+                      onClick={() => bookGuide(guide.id)}
+                      className={cn(
+                        'rounded-lg px-4 py-2 text-xs font-medium transition-all',
+                        bookedGuides.includes(guide.id)
+                          ? 'bg-foreground text-background'
+                          : 'bg-foreground text-background hover:bg-foreground/90'
+                      )}
+                    >
+                      {bookedGuides.includes(guide.id) ? '✓ Booked' : 'Book Now'}
                     </button>
                   </div>
                 </div>

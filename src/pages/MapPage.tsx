@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Star,
@@ -10,6 +10,8 @@ import {
   Shield,
   Info,
   Clock,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AppShell } from '@/components/layout/AppShell';
@@ -17,31 +19,60 @@ import { LiveMap } from '@/components/map/LiveMap';
 import { hyderabadPlaces, emergencyServices } from '@/data/mock';
 import { calculatePriorityScore } from '@/services/ai-engine';
 import { useAppStore } from '@/store/app-store';
+import { useNearbyPlaces, useEmergencyServices } from '@/hooks/use-places';
+import { geocode } from '@/services/places-api';
 import type { Place } from '@/types/travel';
 
-// Merge emergency services as places for map display
-const emergencyPlaces: Place[] = emergencyServices.map((e) => ({
-  id: e.id,
-  name: e.name,
-  type: 'emergency' as const,
-  image: '',
-  description: e.address,
-  rating: 0,
-  reviewCount: 0,
-  price: 0,
-  currency: '₹',
-  priceLevel: 1 as const,
-  coordinates: e.coordinates,
-  address: e.address,
-  openHours: '24/7',
-  tags: ['emergency', e.type],
-}));
-
-const allPlaces = [...hyderabadPlaces, ...emergencyPlaces];
-
 export default function MapPage() {
-  const { situation } = useAppStore();
+  const { situation, apiPlaces, setApiPlaces, userLocation, setUserLocation, addToPlan, addedToPlan } = useAppStore();
+  const { places: fetchedPlaces, loading: placesLoading, fetchPlaces } = useNearbyPlaces();
+  const { services: fetchedEmergency, loading: emergencyLoading, fetchServices } = useEmergencyServices();
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [mapCenter, setMapCenter] = useState<{lat: number; lng: number} | null>(null);
+
+  // Load places from API when location is available or on destination change
+  useEffect(() => {
+    async function load() {
+      const dest = situation.destination || situation.currentLocation || 'Hyderabad';
+      const coords = await geocode(dest);
+      if (coords) {
+        setMapCenter(coords);
+        fetchPlaces(coords, 10000);
+        fetchServices(coords);
+      }
+    }
+    load();
+  }, [situation.destination, situation.currentLocation]);
+
+  // Update store when API places change
+  useEffect(() => {
+    if (fetchedPlaces.length > 0) {
+      setApiPlaces(fetchedPlaces);
+    }
+  }, [fetchedPlaces]);
+
+  // Merge API places with fallback + emergency
+  const emergencyPlaces: Place[] = (fetchedEmergency.length > 0 ? fetchedEmergency : emergencyServices).map((e) => ({
+    id: e.id,
+    name: e.name,
+    type: 'emergency' as const,
+    image: '',
+    description: e.address,
+    rating: 0,
+    reviewCount: 0,
+    price: 0,
+    currency: '₹',
+    priceLevel: 1 as const,
+    coordinates: e.coordinates,
+    address: e.address,
+    openHours: '24/7',
+    tags: ['emergency', e.type],
+  }));
+
+  const allPlaces = [
+    ...(apiPlaces.length > 0 ? apiPlaces : hyderabadPlaces),
+    ...emergencyPlaces,
+  ];
 
   const placesWithScores = allPlaces.map((p) => ({
     ...p,
@@ -164,8 +195,16 @@ export default function MapPage() {
                     <Navigation className="h-3 w-3" />
                     Navigate
                   </a>
-                  <button className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2.5 text-xs font-medium text-foreground hover:bg-card transition-all">
-                    Add to Plan
+                  <button
+                    onClick={() => addToPlan(selectedWithScore.id)}
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-xs font-medium transition-all',
+                      addedToPlan.includes(selectedWithScore.id)
+                        ? 'bg-foreground text-background'
+                        : 'border border-border text-foreground hover:bg-card'
+                    )}
+                  >
+                    {addedToPlan.includes(selectedWithScore.id) ? '✓ In Plan' : 'Add to Plan'}
                   </button>
                 </div>
               </motion.div>
@@ -177,7 +216,9 @@ export default function MapPage() {
                 className="p-5"
               >
                 <h3 className="text-sm font-semibold text-foreground mb-1">Places on Map</h3>
-                <p className="text-[10px] text-muted-foreground mb-4">Tap a marker or list item for details</p>
+                <p className="text-[10px] text-muted-foreground mb-4">
+                  {placesLoading ? 'Loading places from OpenStreetMap...' : `${placesWithScores.length} places found • Tap for details`}
+                </p>
 
                 <div className="space-y-2">
                   {placesWithScores.slice(0, 8).map((place) => (
@@ -198,13 +239,20 @@ export default function MapPage() {
                   ))}
                 </div>
 
+                {placesLoading && (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+                    <span className="text-xs text-muted-foreground ml-2">Fetching places from OpenStreetMap...</span>
+                  </div>
+                )}
+
                 <div className="mt-6 p-3 rounded-lg bg-[#1e3a5f]/5 border border-[#1e3a5f]/10">
                   <div className="flex items-start gap-2">
                     <Info className="h-4 w-4 text-[#1e3a5f] mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-xs font-medium text-foreground mb-0.5">Priority Score</p>
+                      <p className="text-xs font-medium text-foreground mb-0.5">Live Data</p>
                       <p className="text-[10px] text-muted-foreground leading-relaxed">
-                        Based on your interests, reviews, distance, time fit, weather, and popularity.
+                        Places loaded from OpenStreetMap. Priority scores based on your interests and situation.
                       </p>
                     </div>
                   </div>

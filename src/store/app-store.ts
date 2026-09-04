@@ -7,6 +7,8 @@ import type {
   TransportPreference,
   FoodPreference,
   TravelDNA,
+  GeoPoint,
+  Place,
 } from '@/types/travel';
 
 interface AppState {
@@ -49,6 +51,25 @@ interface AppState {
   // Offline mode
   offlineMode: boolean;
   setOfflineMode: (v: boolean) => void;
+
+  // API-driven state
+  userLocation: GeoPoint | null;
+  setUserLocation: (loc: GeoPoint | null) => void;
+  selectedDestination: string;
+  setSelectedDestination: (dest: string) => void;
+  apiPlaces: Place[];
+  setApiPlaces: (places: Place[]) => void;
+  savedPlaces: Place[];
+  addSavedPlace: (place: Place) => void;
+  removeSavedPlace: (placeId: string) => void;
+  connectedTravelers: string[];
+  addConnectedTraveler: (name: string) => void;
+  claimedOffers: string[];
+  claimOffer: (offerId: string) => void;
+  bookedGuides: string[];
+  bookGuide: (guideId: string) => void;
+  addedToPlan: string[];
+  addToPlan: (placeId: string) => void;
 }
 
 const defaultSituation: TravelSituation = {
@@ -137,4 +158,39 @@ export const useAppStore = create<AppState>((set) => ({
 
   offlineMode: false,
   setOfflineMode: (v) => set({ offlineMode: v }),
+
+  // API-driven state
+  userLocation: null,
+  setUserLocation: (loc) => set({ userLocation: loc }),
+  selectedDestination: 'Hyderabad',
+  setSelectedDestination: (dest) => set({ selectedDestination: dest }),
+  apiPlaces: [],
+  setApiPlaces: (places) => set({ apiPlaces: places }),
+  savedPlaces: [],
+  addSavedPlace: (place) => set((state) => ({
+    savedPlaces: state.savedPlaces.some((p) => p.id === place.id)
+      ? state.savedPlaces
+      : [...state.savedPlaces, place],
+  })),
+  removeSavedPlace: (placeId) => set((state) => ({
+    savedPlaces: state.savedPlaces.filter((p) => p.id !== placeId),
+  })),
+  connectedTravelers: [],
+  addConnectedTraveler: (name) => set((state) => ({
+    connectedTravelers: state.connectedTravelers.includes(name)
+      ? state.connectedTravelers
+      : [...state.connectedTravelers, name],
+  })),
+  claimedOffers: [],
+  claimOffer: (offerId) => set((state) => ({
+    claimedOffers: [...state.claimedOffers, offerId],
+  })),
+  bookedGuides: [],
+  bookGuide: (guideId) => set((state) => ({
+    bookedGuides: [...state.bookedGuides, guideId],
+  })),
+  addedToPlan: [],
+  addToPlan: (placeId) => set((state) => ({
+    addedToPlan: [...state.addedToPlan, placeId],
+  })),
 }));

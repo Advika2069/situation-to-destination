@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Star, MapPin, Heart, Calendar, Wallet } from 'lucide-react';
+import { Users, Star, MapPin, Heart, Calendar, Wallet, Check, UserPlus, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AppShell } from '@/components/layout/AppShell';
 import { travelerMatches } from '@/data/mock';
+import { useAppStore } from '@/store/app-store';
 
 export default function TravelTogether() {
+  const { connectedTravelers, addConnectedTraveler } = useAppStore();
+  const [viewingProfile, setViewingProfile] = useState<string | null>(null);
+
   return (
     <AppShell>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 pb-24 lg:pb-6">
@@ -57,14 +62,69 @@ export default function TravelTogether() {
                     ))}
                   </div>
                   <div className="flex gap-2">
-                    <button className="flex items-center gap-1.5 rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium hover:bg-foreground/90 transition-all">
-                      <Heart className="h-3 w-3" />
-                      Connect
+                    <button
+                      onClick={() => addConnectedTraveler(match.name)}
+                      className={cn(
+                        'flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all',
+                        connectedTravelers.includes(match.name)
+                          ? 'bg-foreground text-background'
+                          : 'bg-foreground text-background hover:bg-foreground/90'
+                      )}
+                    >
+                      {connectedTravelers.includes(match.name) ? (
+                        <><Check className="h-3 w-3" /> Connected</>
+                      ) : (
+                        <><Heart className="h-3 w-3" /> Connect</>
+                      )}
                     </button>
-                    <button className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-xs font-medium text-foreground hover:bg-card transition-all">
-                      View Profile
+                    <button
+                      onClick={() => setViewingProfile(viewingProfile === match.id ? null : match.id)}
+                      className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-xs font-medium text-foreground hover:bg-card transition-all"
+                    >
+                      <UserPlus className="h-3 w-3" />
+                      {viewingProfile === match.id ? 'Close' : 'View Profile'}
                     </button>
                   </div>
+
+                  {/* Expanded profile */}
+                  {viewingProfile === match.id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="mt-3 p-3 rounded-lg bg-foreground/5 border border-border"
+                    >
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Interests</p>
+                          <div className="flex flex-wrap gap-1">
+                            {match.interests.map((interest) => (
+                              <span key={interest} className="text-[10px] bg-foreground/10 text-foreground px-2 py-0.5 rounded-full capitalize">{interest}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Budget</p>
+                          <span className="text-[10px] font-medium text-foreground capitalize">{match.budget}</span>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Compatibility Reasons</p>
+                          <div className="space-y-1">
+                            {match.reasons.map((reason) => (
+                              <div key={reason} className="flex items-center gap-1.5">
+                                <Check className="h-2.5 w-2.5 text-emerald-500" />
+                                <span className="text-[10px] text-foreground">{reason}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        {connectedTravelers.includes(match.name) && (
+                          <button className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-foreground text-background px-3 py-2 text-[10px] font-medium hover:bg-foreground/90 transition-all mt-2">
+                            <MessageCircle className="h-3 w-3" /> Start Conversation
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
               </div>
             </motion.div>

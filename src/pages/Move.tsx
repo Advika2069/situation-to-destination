@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   MapPin,
@@ -14,18 +14,68 @@ import {
   Bike,
   Navigation,
   RefreshCw,
+  Loader2,
+  LocateFixed,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AppShell } from '@/components/layout/AppShell';
-import { transportOptions } from '@/data/mock';
+import { transportOptions as fallbackOptions } from '@/data/mock';
+import { getTransportOptions } from '@/services/places-api';
+import { useAppStore } from '@/store/app-store';
+import { useGeocode } from '@/hooks/use-places';
+import type { TransportOption } from '@/types/travel';
 
 export default function Move() {
+  const { situation, addedToPlan, apiPlaces } = useAppStore();
+  const { resolve: geocodeLocation } = useGeocode();
   const [sortBy, setSortBy] = useState<'price' | 'duration' | 'best'>('best');
+  const [transportData, setTransportData] = useState<TransportOption[]>(fallbackOptions);
+  const [loading, setLoading] = useState(false);
+  const [fromPlace, setFromPlace] = useState(situation.currentLocation || 'Current Location');
+  const [toPlace, setToPlace] = useState(situation.destination || 'Hyderabad');
+  const [fromInput, setFromInput] = useState(fromPlace);
+  const [toInput, setToInput] = useState(toPlace);
 
-  const sorted = [...transportOptions].sort((a, b) => {
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const fromCoords = await geocodeLocation(fromPlace);
+        const toCoords = await geocodeLocation(toPlace);
+
+        if (fromCoords && toCoords) {
+          // Calculate approximate distance
+          const R = 6371;
+          const dLat = ((toCoords.lat - fromCoords.lat) * Math.PI) / 180;
+          const dLon = ((toCoords.lng - fromCoords.lng) * Math.PI) / 180;
+          const a = Math.sin(dLat / 2) ** 2 + Math.cos((fromCoords.lat * Math.PI) / 180) * Math.cos((toCoords.lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+          const distance = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+          const options = await getTransportOptions(fromCoords, toCoords, distance);
+          setTransportData(options.map((o, i) => ({
+            ...o,
+            type: o.type as TransportOption['type'],
+            transfers: o.transfers || 0,
+            isCheapest: i === options.length - 1,
+            isFastest: i === 1,
+          })));
+        }
+      } catch {
+        setTransportData(fallbackOptions);
+      }
+      setLoading(false);
+    }
+    load();
+  }, [fromPlace, toPlace]);
+
+  const handleRouteSearch = () => {
+    setFromPlace(fromInput);
+    setToPlace(toInput);
+  };
+
+  const sorted = [...transportData].sort((a, b) => {
     if (sortBy === 'price') return a.price - b.price;
     if (sortBy === 'duration') return parseInt(a.duration) - parseInt(b.duration);
-    // best value
     const aScore = a.isBestValue ? 3 : a.isFastest ? 2 : a.isCheapest ? 1 : 0;
     const bScore = b.isBestValue ? 3 : b.isFastest ? 2 : b.isCheapest ? 1 : 0;
     return bScore - aScore;
@@ -59,20 +109,47 @@ export default function Move() {
           transition={{ delay: 0.1 }}
           className="rounded-xl border border-border bg-card p-5 mb-6"
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">From</p>
-              <p className="text-sm font-semibold text-foreground">Charminar</p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <p className="text-[10px] text-muted-foreground mb-1">From</p>
+                <div className="relative">
+                  <MapPin className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                  <input
+                    value={fromInput}
+                    onChange={(e) => setFromInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRouteSearch()}
+                    placeholder="Enter origin"
+                    className="w-full rounded-lg border border-border bg-background pl-7 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/10"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-1 pt-4">
+                <div className="h-px w-8 bg-border" />
+                <Navigation className="h-3 w-3 text-muted-foreground" />
+                <div className="h-px w-8 bg-border" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] text-muted-foreground mb-1">To</p>
+                <div className="relative">
+                  <MapPin className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                  <input
+                    value={toInput}
+                    onChange={(e) => setToInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRouteSearch()}
+                    placeholder="Enter destination"
+                    className="w-full rounded-lg border border-border bg-background pl-7 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/10"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="h-px w-12 bg-border" />
-              <Navigation className="h-4 w-4 text-muted-foreground" />
-              <div className="h-px w-12 bg-border" />
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">To</p>
-              <p className="text-sm font-semibold text-foreground">Hussain Sagar Lake</p>
-            </div>
+            <button
+              onClick={handleRouteSearch}
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium hover:bg-foreground/90 transition-all"
+            >
+              {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <LocateFixed className="h-3 w-3" />}
+              {loading ? 'Searching...' : 'Search Routes'}
+            </button>
           </div>
         </motion.div>
 
@@ -151,14 +228,21 @@ export default function Move() {
                   <span className="text-[10px] text-muted-foreground">{transport.distance}</span>
                   <span className="text-[10px] text-muted-foreground">{transport.transfers === 0 ? 'Direct' : `${transport.transfers} transfer(s)`}</span>
                 </div>
-                <button className="text-[10px] font-medium text-foreground hover:underline">Select →</button>
+                <a
+                href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(fromPlace)}&destination=${encodeURIComponent(toPlace)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-medium text-foreground hover:underline"
+              >
+                Select →
+              </a>
               </div>
             </motion.div>
           ))}
         </div>
 
         <p className="text-[10px] text-center text-muted-foreground mt-6">
-          Simulated transport data for demo purposes. Prices and times are approximate.
+          Transport options estimated based on distance. Prices are approximate.
         </p>
       </div>
     </AppShell>

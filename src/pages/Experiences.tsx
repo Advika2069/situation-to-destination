@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Sparkles,
@@ -14,10 +14,14 @@ import {
   ArrowRight,
   Clock,
   Wallet,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AppShell } from '@/components/layout/AppShell';
 import { foodItems, hyderabadPlaces } from '@/data/mock';
+import { useNearbyPlaces, useGeocode } from '@/hooks/use-places';
+import { useAppStore } from '@/store/app-store';
 
 const experienceTypes = [
   { id: 'food', label: 'Food Tours', icon: Utensils, color: 'bg-orange-500/10 text-orange-600' },
@@ -32,6 +36,29 @@ const experienceTypes = [
 
 export default function Experiences() {
   const [activeType, setActiveType] = useState('food');
+  const { situation, addToPlan, addedToPlan } = useAppStore();
+  const { places: apiPlaces, loading, fetchPlaces } = useNearbyPlaces();
+  const { resolve: geocodeLocation } = useGeocode();
+  const [allPlaces, setAllPlaces] = useState(hyderabadPlaces);
+
+  useEffect(() => {
+    async function load() {
+      const dest = situation.destination || 'Hyderabad';
+      const coords = await geocodeLocation(dest);
+      if (coords) {
+        await fetchPlaces(coords, 5000, activeType === 'food' ? 'food' : activeType);
+      }
+    }
+    load();
+  }, [situation.destination]);
+
+  useEffect(() => {
+    if (apiPlaces.length > 0) {
+      setAllPlaces(apiPlaces);
+    } else {
+      setAllPlaces(hyderabadPlaces);
+    }
+  }, [apiPlaces]);
 
   return (
     <AppShell>
@@ -102,10 +129,70 @@ export default function Experiences() {
         {/* Food items */}
         {activeType === 'food' && (
           <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Local Specialties
-            </p>
-            {foodItems.map((food, i) => (
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Local Specialties
+              </p>
+              {loading && <Loader2 className="h-3 w-3 text-muted-foreground animate-spin" />}
+            </div>
+
+            {/* API restaurants */}
+            {allPlaces.filter((p) => p.type === 'restaurant').map((place, i) => (
+              <motion.div
+                key={place.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + i * 0.05 }}
+                className="rounded-xl border border-border bg-card p-4 hover:border-foreground/20 transition-all"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="h-16 w-16 rounded-lg overflow-hidden shrink-0">
+                    <img src={place.image} alt={place.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold text-foreground">{place.name}</h4>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Star className="h-3 w-3" fill="currentColor" />
+                        <span className="text-xs font-bold text-foreground">{place.rating || 'N/A'}</span>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{place.description}</p>
+                    <div className="flex items-center gap-3 mt-2">
+                      {place.price > 0 && <span className="text-xs font-medium text-foreground">₹{place.price}</span>}
+                      <span className="text-[10px] text-muted-foreground">{place.openHours}</span>
+                      {place.isVegetarian && (
+                        <span className="text-[10px] bg-green-500/10 text-green-600 px-1.5 py-0.5 rounded font-medium">Veg</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={() => addToPlan(place.id)}
+                        className={cn(
+                          'flex items-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-medium transition-all',
+                          addedToPlan.includes(place.id)
+                            ? 'bg-foreground text-background'
+                            : 'border border-border text-foreground hover:bg-card'
+                        )}
+                      >
+                        {addedToPlan.includes(place.id) ? '✓ In Plan' : 'Add to Plan'}
+                      </button>
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${place.coordinates.lat},${place.coordinates.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-[10px] font-medium text-foreground hover:bg-card transition-all"
+                      >
+                        <ExternalLink className="h-3 w-3" /> Navigate
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+
+            {/* Fallback food items */}
+            {allPlaces.filter((p) => p.type === 'restaurant').length === 0 && foodItems.map((food, i) => (
               <motion.div
                 key={food.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -131,12 +218,6 @@ export default function Experiences() {
                     <div className="flex items-center gap-3 mt-2">
                       <span className="text-xs font-medium text-foreground">₹{food.price}</span>
                       <span className="text-[10px] text-muted-foreground">{food.restaurant}</span>
-                      {food.isVegetarian && (
-                        <span className="text-[10px] bg-green-500/10 text-green-600 px-1.5 py-0.5 rounded font-medium">Veg</span>
-                      )}
-                      {food.isVegan && (
-                        <span className="text-[10px] bg-emerald-500/10 text-emerald-600 px-1.5 py-0.5 rounded font-medium">Vegan</span>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -148,10 +229,13 @@ export default function Experiences() {
         {/* Generic experience cards */}
         {activeType !== 'food' && (
           <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Curated Experiences
-            </p>
-            {hyderabadPlaces.filter(p => p.tags.includes(activeType)).map((place, i) => (
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Curated Experiences
+              </p>
+              {loading && <Loader2 className="h-3 w-3 text-muted-foreground animate-spin" />}
+            </div>
+            {allPlaces.filter(p => p.tags.includes(activeType) || p.type === activeType as any).map((place, i) => (
               <motion.div
                 key={place.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -176,11 +260,32 @@ export default function Experiences() {
                       {place.price > 0 && <span className="text-xs font-medium text-foreground">₹{place.price}</span>}
                       <span className="text-[10px] text-muted-foreground">{place.openHours}</span>
                     </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={() => addToPlan(place.id)}
+                        className={cn(
+                          'flex items-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-medium transition-all',
+                          addedToPlan.includes(place.id)
+                            ? 'bg-foreground text-background'
+                            : 'border border-border text-foreground hover:bg-card'
+                        )}
+                      >
+                        {addedToPlan.includes(place.id) ? '✓ In Plan' : 'Add to Plan'}
+                      </button>
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${place.coordinates.lat},${place.coordinates.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-[10px] font-medium text-foreground hover:bg-card transition-all"
+                      >
+                        <ExternalLink className="h-3 w-3" /> Navigate
+                      </a>
+                    </div>
                   </div>
                 </div>
               </motion.div>
             ))}
-            {hyderabadPlaces.filter(p => p.tags.includes(activeType)).length === 0 && (
+            {allPlaces.filter(p => p.tags.includes(activeType) || p.type === activeType as any).length === 0 && !loading && (
               <div className="text-center py-12">
                 <p className="text-sm text-muted-foreground">No experiences found for this category.</p>
               </div>
